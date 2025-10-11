@@ -18,8 +18,6 @@ Examples:
 """
 
 from .block import (
-    CustomC3,
-    RepBlockWithAttn,
     C1,
     C2,
     C2PSA,
@@ -49,12 +47,14 @@ from .block import (
     CBFuse,
     CBLinear,
     ContrastiveHead,
+    CustomC3,
     GhostBottleneck,
     HGBlock,
     HGStem,
     ImagePoolingAttn,
     MaxSigmoidAttnBlock,
     Proto,
+    RepBlockWithAttn,
     RepC3,
     RepNCSPELAN4,
     RepVGGDW,
