@@ -18,6 +18,8 @@ Examples:
 """
 
 from .block import (
+    CustomC3,
+    RepBlockWithAttn,
     C1,
     C2,
     C2PSA,
@@ -103,6 +105,7 @@ from .transformer import (
 )
 
 __all__ = (
+    "RepBlockWithAttn",
     "Conv",
     "Conv2",
     "LightConv",
