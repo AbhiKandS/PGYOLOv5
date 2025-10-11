@@ -1,7 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Block modules."""
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -192,7 +192,7 @@ class HGBlock(nn.Module):
 class SPP(nn.Module):
     """Spatial Pyramid Pooling (SPP) layer https://arxiv.org/abs/1406.4729."""
 
-    def __init__(self, c1: int, c2: int, k: Tuple[int, ...] = (5, 9, 13)):
+    def __init__(self, c1: int, c2: int, k: tuple[int, ...] = (5, 9, 13)):
         """
         Initialize the SPP layer with input/output channels and pooling kernel sizes.
 
@@ -353,12 +353,12 @@ class C3(nn.Module):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
 
-
 # In ultralytics/nn/modules/block.py
 
 # Find the original C3 class and REPLACE it with this:
 
 # In ultralytics/nn/modules/block.py, REPLACE the C3 class with this:
+
 
 class CustomC3(nn.Module):
     """C3 module modified to use BottleneckWithAttn and collect both attention maps."""
@@ -371,7 +371,7 @@ class CustomC3(nn.Module):
         self.cv3 = Conv(2 * c_, c2, 1)
         # Use our new bottleneck with both attention modules
         self.m = nn.ModuleList(BottleneckWithAttn(c_, c_, shortcut, g, e=1.0) for _ in range(n))
-        
+
         # Lists to store both types of attention maps
         self.gate_maps = []
         self.sa_maps = []
@@ -387,9 +387,9 @@ class CustomC3(nn.Module):
         for module in self.m:
             main_path_x = module(main_path_x)
             # Collect both maps from the bottleneck
-            if hasattr(module, 'gate_map') and module.gate_map is not None:
+            if hasattr(module, "gate_map") and module.gate_map is not None:
                 self.gate_maps.append(module.gate_map)
-            if hasattr(module, 'sa_map') and module.sa_map is not None:
+            if hasattr(module, "sa_map") and module.sa_map is not None:
                 self.sa_maps.append(module.sa_map)
 
         # Concatenate and apply final convolution
@@ -512,8 +512,10 @@ class GhostBottleneck(nn.Module):
 
 # ----------------- ADD YOUR CODE HERE -----------------
 
+
 class SCAM(nn.Module):
     """A custom SCAM attention module."""
+
     def __init__(self, channels, reduction=16):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
@@ -521,7 +523,7 @@ class SCAM(nn.Module):
             nn.Conv2d(channels, channels // reduction, 1, bias=False),
             nn.ReLU(),
             nn.Conv2d(channels // reduction, channels, 1, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
         self.spatial = nn.Conv2d(2, 1, kernel_size=7, padding=3)
 
@@ -529,27 +531,26 @@ class SCAM(nn.Module):
         """Forward pass for SCAM."""
         ca = self.channel_fc(self.avg_pool(x))
         x_ca = x * ca
-        
+
         max_out, _ = torch.max(x_ca, dim=1, keepdim=True)
         avg_out = torch.mean(x_ca, dim=1, keepdim=True)
         sa_features = torch.cat([avg_out, max_out], dim=1)
         sa = self.spatial(sa_features)
         sa_map = torch.sigmoid(sa)
-        
+
         out = x_ca * sa_map
-        return out, sa_map # Return output and the spatial attention map
+        return out, sa_map  # Return output and the spatial attention map
+
 
 class SelfAttentionChannelPruning(nn.Module):
     """A custom Self-Attention Channel Pruning (SACP) module."""
+
     def __init__(self, channels, reduction=8):
         super().__init__()
         self.q = nn.Linear(channels, channels // reduction, bias=False)
         self.k = nn.Linear(channels, channels // reduction, bias=False)
         self.v = nn.Linear(channels, channels // reduction, bias=False)
-        self.proj = nn.Sequential(
-            nn.Linear(channels // reduction, channels),
-            nn.Sigmoid()
-        )
+        self.proj = nn.Sequential(nn.Linear(channels // reduction, channels), nn.Sigmoid())
 
     def forward(self, x):
         """Forward pass for SACP."""
@@ -560,7 +561,7 @@ class SelfAttentionChannelPruning(nn.Module):
         V = self.v(tokens)
         attn = torch.softmax(Q @ K.transpose(-2, -1) / (Q.shape[-1] ** 0.5), dim=-1)
         gate_map = self.proj(attn @ V).view(B, C, 1, 1)
-        return x * gate_map, gate_map # Return output and the gate map
+        return x * gate_map, gate_map  # Return output and the gate map
 
 
 class BottleneckWithAttn(nn.Module):
@@ -574,16 +575,16 @@ class BottleneckWithAttn(nn.Module):
         self.sacp = SelfAttentionChannelPruning(c2)
         self.scam = SCAM(c2)
         self.add = shortcut and c1 == c2
-        
+
         # FIX 1: Initialize attributes to hold the maps
-        self.gate_map = None 
+        self.gate_map = None
         self.sa_map = None
 
     def forward(self, x):
         """Forward pass: Conv -> SACP -> SCAM. Detaches maps for deepcopy compatibility."""
         # Standard convolutions
         out = self.cv2(self.cv1(x))
-        
+
         # FIX 2: Apply attention, then store the DETACHED map
         # This prevents the deepcopy error during training setup.
         out, gate_map = self.sacp(out)
@@ -591,31 +592,34 @@ class BottleneckWithAttn(nn.Module):
 
         out, sa_map = self.scam(out)
         self.sa_map = sa_map.detach()
-        
+
         return x + out if self.add else out
+
+
 # ----------------- END OF YOUR ADDED CODE -----------------
 
 
 # ----------------- YOLOv6 -----------------
 # In ultralytics/nn/modules/block.py
 
+
 class RepBlockWithAttn(nn.Module):
     """A corrected YOLOv6 RepVGG-style block with added SACP and SCAM attention."""
 
     def __init__(self, c1, c2, n=1):  # c1=in_channels, c2=out_channels, n=num_convs
         super().__init__()
-        
+
         # This block as a whole takes c1 as input and produces c2 as output.
         # It contains 'n' internal Conv layers.
-        
+
         # The first Conv layer handles the channel transition from c1 to c2.
         convs_list = [Conv(c1, c2, 3, 1)]
-        
+
         # The rest of the (n-1) layers are internal and operate on c2 channels.
         convs_list.extend([Conv(c2, c2, 3, 1) for _ in range(n - 1)])
-        
+
         self.convs = nn.Sequential(*convs_list)
-        
+
         # Attention modules are based on the block's final output channels (c2).
         self.sacp = SelfAttentionChannelPruning(c2)
         self.scam = SCAM(c2)
@@ -638,6 +642,8 @@ class RepBlockWithAttn(nn.Module):
         self.sa_maps.append(sa_map.detach())
 
         return out
+
+
 # ----------------- YOLOv6 -----------------
 
 
@@ -645,7 +651,7 @@ class Bottleneck(nn.Module):
     """Standard bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
         """
         Initialize a standard bottleneck module.
@@ -885,7 +891,7 @@ class ImagePoolingAttn(nn.Module):
     """ImagePoolingAttn: Enhance the text embeddings with image-aware information."""
 
     def __init__(
-        self, ec: int = 256, ch: Tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
+        self, ec: int = 256, ch: tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
     ):
         """
         Initialize ImagePoolingAttn module.
@@ -914,7 +920,7 @@ class ImagePoolingAttn(nn.Module):
         self.hc = ec // nh
         self.k = k
 
-    def forward(self, x: List[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of ImagePoolingAttn.
 
@@ -1030,7 +1036,7 @@ class RepBottleneck(Bottleneck):
     """Rep bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
         """
         Initialize RepBottleneck.
@@ -1200,7 +1206,7 @@ class SPPELAN(nn.Module):
 class CBLinear(nn.Module):
     """CBLinear."""
 
-    def __init__(self, c1: int, c2s: List[int], k: int = 1, s: int = 1, p: Optional[int] = None, g: int = 1):
+    def __init__(self, c1: int, c2s: list[int], k: int = 1, s: int = 1, p: Optional[int] = None, g: int = 1):
         """
         Initialize CBLinear module.
 
@@ -1216,7 +1222,7 @@ class CBLinear(nn.Module):
         self.c2s = c2s
         self.conv = nn.Conv2d(c1, sum(c2s), k, s, autopad(k, p), groups=g, bias=True)
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         """Forward pass through CBLinear layer."""
         return self.conv(x).split(self.c2s, dim=1)
 
@@ -1224,7 +1230,7 @@ class CBLinear(nn.Module):
 class CBFuse(nn.Module):
     """CBFuse."""
 
-    def __init__(self, idx: List[int]):
+    def __init__(self, idx: list[int]):
         """
         Initialize CBFuse module.
 
@@ -1234,7 +1240,7 @@ class CBFuse(nn.Module):
         super().__init__()
         self.idx = idx
 
-    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
         """
         Forward pass through CBFuse layer.
 
@@ -2148,7 +2154,7 @@ class Residual(nn.Module):
 class SAVPE(nn.Module):
     """Spatial-Aware Visual Prompt Embedding module for feature enhancement."""
 
-    def __init__(self, ch: List[int], c3: int, embed: int):
+    def __init__(self, ch: list[int], c3: int, embed: int):
         """
         Initialize SAVPE module with channels, intermediate channels, and embedding dimension.
 
@@ -2176,7 +2182,7 @@ class SAVPE(nn.Module):
         self.cv5 = nn.Conv2d(1, self.c, 3, padding=1)
         self.cv6 = nn.Sequential(Conv(2 * self.c, self.c, 3), nn.Conv2d(self.c, self.c, 3, padding=1))
 
-    def forward(self, x: List[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
         """Process input features and visual prompts to generate enhanced embeddings."""
         y = [self.cv2[i](xi) for i, xi in enumerate(x)]
         y = self.cv4(torch.cat(y, dim=1))

@@ -12,8 +12,6 @@ import torch.nn as nn
 
 from ultralytics.nn.autobackend import check_class_names
 from ultralytics.nn.modules import (
-    CustomC3,
-    RepBlockWithAttn,
     AIFI,
     C1,
     C2,
@@ -45,6 +43,7 @@ from ultralytics.nn.modules import (
     Conv,
     Conv2,
     ConvTranspose,
+    CustomC3,
     Detect,
     DWConv,
     DWConvTranspose2d,
@@ -508,14 +507,12 @@ class DetectionModel(BaseModel):
     """
     YOLO detection model.
 
-    This class implements the YOLO detection architecture, handling model initialization, forward pass,
-    augmented inference, and loss computation for object detection tasks.
+    This class implements the YOLO detection architecture, handling model initialization, forward pass, augmented
+    inference, and loss computation for object detection tasks.
     """
 
     def __init__(self, cfg="yolov5s.yaml", ch=3, nc=None, verbose=True):
-        """
-        Initialize the YOLO detection model with the given config and parameters.
-        """
+        """Initialize the YOLO detection model with the given config and parameters."""
         super().__init__()
 
         # <<< CHANGE 1: ADD THESE LISTS AT THE END OF __init__ >>>
@@ -538,6 +535,7 @@ class DetectionModel(BaseModel):
         if isinstance(m, Detect):
             s = 256  # 2x min stride
             m.inplace = self.inplace
+
             # Define a nested _forward function for stride calculation
             def _forward(x):
                 """Perform a forward pass through the model for stride calculation."""
@@ -554,7 +552,6 @@ class DetectionModel(BaseModel):
         if verbose:
             self.info()
             LOGGER.info("")
-
 
     # <<< CHANGE 2: ADD THIS ENTIRE NEW `forward` METHOD >>>
     # def forward(self, x, *args, **kwargs):
@@ -606,45 +603,44 @@ class DetectionModel(BaseModel):
     #     """Computes loss, including custom attention loss, and returns tensors."""
     #     # This print statement can be removed now that we know it works
     #     # print("\n\n>>> HELLO FROM THE MODIFIED LOSS METHOD! <<<\n\n")
-    
+
     #     if not hasattr(self, 'criterion'):
     #         self.criterion = self.init_criterion()
-    
+
     #     preds = self.forward(batch['img']) if preds is None else preds
     #     loss, loss_items = self.criterion(preds, batch)
-    
+
     #     # --- FIX IS HERE: Replace the old custom block with this one ---
     #     lambda_gate = 0.01
     #     lambda_sa = 0.01
-        
+
     #     gate_loss = torch.tensor(0.0, device=loss.device)
     #     if self.all_gate_maps:
     #         for gate_map in self.all_gate_maps:
     #             gate_loss += torch.abs(gate_map).mean()
-        
+
     #     sa_loss = torch.tensor(0.0, device=loss.device)
     #     if self.all_sa_maps:
     #         for sa_map in self.all_sa_maps:
     #             sa_loss += torch.abs(sa_map).mean()
-        
+
     #     # Add new losses to the total loss
     #     loss += (lambda_gate * gate_loss) + (lambda_sa * sa_loss)
-        
+
     #     # Append new loss values to the loss_items tensor
     #     loss_items = torch.cat((loss_items,
     #                             (lambda_gate * gate_loss).unsqueeze(0),
     #                             (lambda_sa * sa_loss).unsqueeze(0)))
     #     # -----------------------------------------------------------------
-        
+
     #     return loss, loss_items
 
     def _predict_augment(self, x):
-        """
-        Perform augmentations on input image x and return augmented inference and train outputs.
-        """
+        """Perform augmentations on input image x and return augmented inference and train outputs."""
         if self.end2end:
-            LOGGER.warning("Model does not support 'augment=True' with end-to-end models, "
-                           "reverting to single-scale prediction.")
+            LOGGER.warning(
+                "Model does not support 'augment=True' with end-to-end models, reverting to single-scale prediction."
+            )
             return self._predict_once(x)
         img_size = x.shape[-2:]  # height, width
         s = [1, 0.83, 0.67]  # scales
@@ -660,9 +656,7 @@ class DetectionModel(BaseModel):
 
     @staticmethod
     def _descale_pred(p, flips, scale, img_size, dim=1):
-        """
-        De-scale predictions following augmented inference (inverse operation).
-        """
+        """De-scale predictions following augmented inference (inverse operation)."""
         p[:, :4] /= scale  # de-scale
         x, y, wh, cls = p.split((1, 1, 2, p.shape[dim] - 4), dim)
         if flips == 2:
@@ -672,9 +666,7 @@ class DetectionModel(BaseModel):
         return torch.cat((x, y, wh, cls), dim)
 
     def _clip_augmented(self, y):
-        """
-        Clip YOLO augmented inference tails.
-        """
+        """Clip YOLO augmented inference tails."""
         nl = self.model[-1].nl  # number of detection layers (P3-P5)
         g = sum(4**x for x in range(nl))  # grid points
         e = 1  # exclude layer count
@@ -863,7 +855,7 @@ class ClassificationModel(BaseModel):
         self.stride = torch.Tensor([1])  # no stride constraints
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.info()
-    
+
     # def forward(self, x, *args, **kwargs):
     #     """
     #     Runs the forward pass and collects attention maps from modified C3 modules.
@@ -885,40 +877,40 @@ class ClassificationModel(BaseModel):
     #     """Computes classification loss plus your custom attention loss."""
     #     if not hasattr(self, 'criterion'):
     #         self.criterion = self.init_criterion()
-        
+
     #     # Get predictions by running the image through the sequential model
     #     preds = self.model(batch['img']) if preds is None else preds
-        
+
     #     # --- THE FIX IS HERE ---
     #     # Ensure the labels tensor is of type long (integer)
     #     labels = batch['cls'].long()
-        
+
     #     # --- Standard Classification Loss ---
     #     # Use the new 'labels' variable
     #     standard_loss = self.criterion(preds, labels)
-        
+
     #     # --- Your Custom Attention Loss (same as before) ---
     #     lambda_gate = 0.01
     #     lambda_sa = 0.01
-        
+
     #     gate_loss = torch.tensor(0.0, device=standard_loss.device)
     #     if self.all_gate_maps:
     #         for gate_map in self.all_gate_maps:
     #             gate_loss += torch.abs(gate_map).mean()
-        
+
     #     sa_loss = torch.tensor(0.0, device=standard_loss.device)
     #     if self.all_sa_maps:
     #         for sa_map in self.all_sa_maps:
     #             sa_loss += torch.abs(sa_map).mean()
-        
+
     #     # Add new losses to the total loss
     #     total_loss = standard_loss + (lambda_gate * gate_loss) + (lambda_sa * sa_loss)
-    
+
     #     # --- Logging (Recommended) ---
     #     self.log('loss', standard_loss)
     #     self.log('gate_loss', lambda_gate * gate_loss)
     #     self.log('sa_loss', lambda_sa * sa_loss)
-    
+
     #     # Classification only returns a single loss value
     #     return total_loss
 
