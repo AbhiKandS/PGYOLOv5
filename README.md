@@ -1,6 +1,6 @@
 # PG-YOLOv5: Pruning-Guided YOLOv5
 
-This repository provides information and usage instructions for **PG-YOLOv5**, a novel, lightweight detection framework optimized for high-fidelity livestock facial analysis, as presented in the paper *"Explainable Pruning-Focused Attention Network for High-Fidelity Livestock Facial Detection and Identification"*.
+This repository provides information and usage instructions for **PG-YOLOv5**, a novel, lightweight detection framework optimized for high-fidelity livestock facial analysis.
 
 PG-YOLOv5 is built upon YOLOv5 and integrates specialized modules to enhance discriminative feature representation and eliminate redundant model components, making it both highly accurate and computationally efficient for real-time deployment.
 
