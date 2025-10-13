@@ -1,7 +1,3 @@
-Of course. Based on the provided research paper, here is a `README.md` file that highlights the features of PG-YOLOv5, provides instructions on how to use a pre-trained model, includes the comparative analysis table, and links to the public dataset.
-
------
-
 # PG-YOLOv5: Pruning-Guided YOLOv5
 
 This repository provides information and usage instructions for **PG-YOLOv5**, a novel, lightweight detection framework optimized for high-fidelity livestock facial analysis, as presented in the paper *"Explainable Pruning-Focused Attention Network for High-Fidelity Livestock Facial Detection and Identification"*.
