@@ -20,45 +20,35 @@ The following instructions explain how to use a pre-trained PG-YOLOv5 model for 
 
 ### 1\. Setup Environment
 
-First, clone the Ultralytics repository and install the required dependencies.
+First, clone the PGYOLOv5 repository and install the required dependencies.
 
 ```bash
 # Clone the repository
-git clone https://github.com/ultralytics/ultralytics.git
+git clone https://github.com/AbhiKandS/PGYOLOv5.git
 
 # Navigate into the project directory
-cd ultralytics
-
-# Install the package in editable mode
-pip install -e .
+cd PGYOLOv5
 ```
 
 ### 2\. Run Inference with PG-YOLOv5
 
-You can easily load the pre-trained PG-YOLOv5 model and run predictions on your images. You will need the pre-trained model weights file (e.g., `pgyolov5.pt`).
+You can easily load the pre-trained PG-YOLOv5 model and run predictions on your images. You will need the pre-trained model weights file (i.e., `pgyolov5.pt`).
 
 ```python
 from ultralytics import YOLO
 
 # Load the pre-trained PG-YOLOv5 model weights
-# NOTE: 'pgyolov5.pt' is a placeholder for the actual trained model file.
-model = YOLO('pgyolov5.pt')
+model = YOLO('./pgyolov5.pt')
 
-# Define the path to your image
-image_path = 'path/to/your/pig_image.jpg'
-
-# Run inference
-results = model.predict(source=image_path, save=True)
-
-# Print the results
-print(results)
+# Run inference on image data
+metrics = model.val(data='/path/to/data.yaml')
 ```
 
 ## Performance on Public Dataset (PCVD)
 
 PG-YOLOv5 was benchmarked on the public **Pig Face Computer Vision Dataset (PCVD)**.
 
-  * **Dataset Link:** [Pig Face Computer Vision Dataset on Roboflow](https://www.google.com/search?q=https://universe.roboflow.com/project-zsqs6/pig-zsqs6)
+  * **Dataset Link:** [Pig Face Computer Vision Dataset on Roboflow](https://universe.roboflow.com/project-zsqs6/pig-zsqs6)
 
 The framework demonstrates a superior trade-off between accuracy and computational efficiency compared to other state-of-the-art models.
 
