@@ -1,18 +1,20 @@
-import torch
-from torchvision import models, datasets, transforms
-from torch.utils.data import DataLoader
 import time
-from tqdm import tqdm
-import torchmetrics
+
+import torch
 import torch.nn as nn
+import torchmetrics
+from torch.utils.data import DataLoader
+from torchvision import datasets, models
+from tqdm import tqdm
+
 
 def run_evaluation():
     # --- 1. Configuration ---
-    MODEL_PATH = '/Users/abhijithks/Downloads/efficientnet_v2_m.pth'
-    DATA_DIR = '/Users/abhijithks/tmpZsh/final-dataset/pig-imageFolder/'
+    MODEL_PATH = "/Users/abhijithks/Downloads/efficientnet_v2_m.pth"
+    DATA_DIR = "/Users/abhijithks/tmpZsh/final-dataset/pig-imageFolder/"
     BATCH_SIZE = 32
     NUM_CLASSES = 9
-    
+
     # --- 2. Device Setup --
     if torch.cuda.is_available():
         DEVICE = torch.device("cuda")
@@ -25,11 +27,11 @@ def run_evaluation():
     # --- 3. Model Loading ---
     weights = models.EfficientNet_V2_M_Weights.DEFAULT
     model = models.efficientnet_v2_m()
-    
-# Get the number of input features from the original linear layer
+
+    # Get the number of input features from the original linear layer
     num_ftrs = model.classifier[1].in_features
 
-# Replace the linear layer with a new one for your number of classes
+    # Replace the linear layer with a new one for your number of classes
     model.classifier[1] = nn.Linear(num_ftrs, NUM_CLASSES)
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
     model.to(DEVICE)
@@ -40,7 +42,7 @@ def run_evaluation():
     # ✅ FIX: Use the correct weights and transforms for ResNet-18
     auto_transforms = weights.transforms()
     test_dataset = datasets.ImageFolder(root=f"{DATA_DIR}/test", transform=auto_transforms)
-    
+
     # Set num_workers to 0 if on Windows/macOS and not in a main block,
     # or keep it > 0 inside the main block.
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=8)
@@ -58,7 +60,7 @@ def run_evaluation():
 
             start_time = time.perf_counter()
             outputs = model(inputs)
-            if DEVICE.type == 'cuda':
+            if DEVICE.type == "cuda":
                 torch.cuda.synchronize()
             end_time = time.perf_counter()
 
@@ -81,5 +83,5 @@ def run_evaluation():
 
 
 # ✅ FIX: Wrap the code that runs the script in this block
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_evaluation()
